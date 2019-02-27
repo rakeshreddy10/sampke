@@ -1,3 +1,5 @@
+dao/model/moi.go
+
 package model
 
 // MOI is the full calculated MOI Object
