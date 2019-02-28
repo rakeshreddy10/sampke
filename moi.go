@@ -1,4 +1,4 @@
-dao/model/moi.go
+//dao/model/moi.go
 
 package model
 

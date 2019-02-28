@@ -62,4 +62,3 @@ func getStrgy(offr model.MasterPlanOffer, strgy model.CustMgmtStrgy) model.MOISt
 	strategy.OffrNum = offr.OffrNum
 	return strategy
 }
-
