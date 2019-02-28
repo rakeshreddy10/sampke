@@ -62,3 +62,62 @@ func getStrgy(offr model.MasterPlanOffer, strgy model.CustMgmtStrgy) model.MOISt
 	strategy.OffrNum = offr.OffrNum
 	return strategy
 }
+
+func TestCalcCIM_MultPlstc(t *testing.T) {
+	ctx := new(config.SpiceContext)
+	mp := GetTestMP(t)
+	mp.Offers[0].PlasStyleStrctCd = genutil.StrPtrAssgn("12345")
+	solID := 1234
+	mockDB, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
+	}
+	defer mockDB.Close()
+	dbx := sqlx.NewDb(mockDB, "sqlmock")
+	key := `akey`
+	rows1 := sqlmock.NewRows([]string{"seg_lib_key", "no_ment_cl", "lob_leaf_cd", "mult_card_fmly_card", "svc_ownr_cd", "cr_lvl_cd"}).
+		AddRow(key, "vala", "valb", "valc", "vald", "vale")
+	intVal := 0
+	strVal := "string value"
+	rows2 := sqlmock.NewRows([]string{"cust_mgmt_strgy_strc_cd", "helix_price_rprc_strgy_id", "helix_price_rprc_strgy_parm_num",
+		"helix_over_lmt_strgy_id", "helix_delqy_strgy_id", "brndd_prod_id", "grdun_strgy_id", "stmt_cr_strgy_id",
+		"helix_crs_sell_strgy_id", "helix_retntn_strgy_id", "helix_retntn_strgy_eligy_id", "helix_ractv_clip_strgy_eligy_id",
+		"helix_ractv_clip_strgy_id", "helix_lnmgmt_strgy_id", "helix_lnmgmt_strgy_parm_num", "helix_lnmgmt_strgy_parm_val_num"}).
+		AddRow(key, intVal, intVal, intVal, intVal, intVal, intVal, intVal,
+			intVal, intVal, intVal, intVal, intVal, intVal, intVal, strVal)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows1)
+	mock.ExpectQuery("SELECT").WillReturnRows(rows2)
+	// mock.ExpectQuery("SELECT").WillReturnRows(rows2)
+	result, err := CalcCIM(ctx, dbx, solID, mp)
+	if err != nil {
+		t.Fatalf("unexpected error: %+v", err)
+	}
+	if result.Sol == nil {
+		t.Fatalf("unexpected nil solicitation")
+	}
+	if result.Sol.SolID != solID {
+		t.Errorf("expected Sol id %d, got %d", solID, result.Sol.SolID)
+	}
+	if len(result.TestCells) != 2 {
+		t.Errorf("unexpected test cell size: %d", len(result.TestCells))
+	}
+	if len(result.ProdCells) != 2 {
+		t.Errorf("unexpected prod cell size: %d", len(result.ProdCells))
+	}
+	if result.Sol.CLPID == nil {
+		t.Fatalf("unexpected nil value for CLPID")
+	}
+	if *result.Sol.CLPID != "Y" {
+		t.Errorf("unexpected value for CLPID: %s", *result.Sol.CLPID)
+	}
+	if len(result.Strategies) != 8 {
+		t.Errorf("unexpected Strategies size: %d", len(result.Strategies))
+	}
+	if result.Strategies[0].CxMgtStratStctID == nil {
+		t.Fatalf("unexpected nil value for CxMgtStratStctID")
+	}
+	strgyID := *result.Strategies[0].CxMgtStratStctID
+	if strgyID != "cust-mgmt-strgy-strct-ID" {
+		t.Errorf("Strategy customer management structure ID:\ngot:  %s\nwant: %s", *result.Strategies[0].CxMgtStratStctID, "cust-mgmt-strgy-strct-ID")
+	}
+}
